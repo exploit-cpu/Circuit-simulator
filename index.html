@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>⚡ Симулятор Электрических Цепей</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            overflow: hidden;
+            height: 100vh;
+            touch-action: none;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .header {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(20px);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            z-index: 1000;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .header-title {
+            font-size: 1.4em;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-icon {
+            animation: spark 2s infinite;
+        }
+
+        @keyframes spark {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(16, 185, 129, 0.5);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .btn-stop:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(239, 68, 68, 0.5);
+        }
+
+        .btn-clear {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+        }
+
+        .btn-menu {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+        }
+
+        .btn-wire {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            position: relative;
+        }
+
+        .btn-wire.active {
+            background: linear-gradient(135deg, #10b981, #059669);
+            animation: pulse-glow 1.5s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+            50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.8); }
+        }
+
+        .main-area {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: rgba(255,255,255,0.98);
+            backdrop-filter: blur(20px);
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.05);
+            border-radius: 10px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            border-radius: 10px;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .category {
+            margin-bottom: 25px;
+        }
+
+        .category-title {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            border-radius: 10px;
+            border-left: 4px solid #8b5cf6;
+        }
+
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .component-item {
+            background: white;
+            border: 3px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 15px;
+            cursor: grab;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .component-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .component-item:hover::before {
+            left: 100%;
+        }
+
+        .component-item:hover {
+            transform: translateY(-5px) scale(1.02);
+            border-color: #8b5cf6;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+        }
+
+        .component-item:active {
+            cursor: grabbing;
+            transform: scale(0.98);
+        }
+
+        .component-icon-wrapper {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border-radius: 12px;
+            padding: 10px;
+        }
+
+        .component-icon-wrapper svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .component-name {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #1e293b;
+            text-align: center;
+        }
+
+        .component-value {
+            font-size: 0.75em;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .workspace {
+            flex: 1;
+            position: relative;
+            background: 
+                radial-gradient(circle at 20px 20px, rgba(255,255,255,0.03) 1px, transparent 1px),
+                radial-gradient(circle at 20px 20px, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            overflow: hidden;
+        }
+
+        .workspace-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .component {
+            position: absolute;
+            cursor: move;
+            touch-action: none;
+            z-index: 10;
+            transition: filter 0.3s;
+        }
+
+        .component.dragging {
+            opacity: 0.9;
+            z-index: 1000;
+            filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5));
+        }
+
+        .component-body {
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border: 4px solid #1e293b;
+            border-radius: 16px;
+            padding: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            position: relative;
+            min-width: 90px;
+            text-align: center;
+        }
+
+        .component-body-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .component-svg {
+            width: 55px;
+            height: 55px;
+        }
+
+        .component-label {
+            font-size: 0.8em;
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 4px;
+        }
+
+        .component-info {
+            font-size: 0.7em;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .component-current {
+            font-size: 0.7em;
+            color: #10b981;
+            font-weight: 700;
+            padding: 3px 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+
+        .terminal {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            position: absolute;
+            border: 4px solid #1e293b;
+            cursor: crosshair;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 20;
+            background: radial-gradient(circle, #fff, #e2e8f0);
+        }
+
+        .terminal.positive {
+            background: radial-gradient(circle, #fca5a5, #ef4444);
+            top: 50%;
+            right: -8px;
+            transform: translateY(-50%);
+        }
+
+        .terminal.negative {
+            background: radial-gradient(circle, #93c5fd, #3b82f6);
+            top: 50%;
+            left: -8px;
+            transform: translateY(-50%);
+        }
+
+        .terminal:hover {
+            transform: translateY(-50%) scale(1.6);
+            box-shadow: 0 0 20px currentColor;
+        }
+
+        .terminal.connecting {
+            animation: terminal-pulse 0.6s infinite;
+            transform: translateY(-50%) scale(1.4);
+        }
+
+        @keyframes terminal-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            border: 3px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 30;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .component:hover .delete-btn {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .delete-btn:hover {
+            transform: scale(1.2);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Bulb glow animation */
+        .bulb-on .component-svg {
+            filter: drop-shadow(0 0 10px #fbbf24);
+            animation: bulb-glow 0.8s ease-in-out;
+        }
+
+        @keyframes bulb-glow {
+            0% { filter: drop-shadow(0 0 0 #fbbf24); }
+            100% { filter: drop-shadow(0 0 20px #fbbf24); }
+        }
+
+        .bulb-on .component-body {
+            background: linear-gradient(145deg, #fef3c7, #fde68a);
+            box-shadow: 0 0 40px rgba(251, 191, 36, 0.6), 0 8px 30px rgba(0,0,0,0.3);
+        }
+
+        /* LED glow animation */
+        .led-on .component-svg {
+            animation: led-glow 0.5s ease-in-out;
+        }
+
+        @keyframes led-glow {
+            0% { filter: drop-shadow(0 0 0 currentColor); }
+            100% { filter: drop-shadow(0 0 15px currentColor); }
+        }
+
+        .led-on.red .component-svg {
+            filter: drop-shadow(0 0 15px #ef4444);
+        }
+
+        .led-on.green .component-svg {
+            filter: drop-shadow(0 0 15px #22c55e);
+        }
+
+        /* Switch animation */
+        .switch-on .component-body {
+            background: linear-gradient(145deg, #d1fae5, #a7f3d0);
+            border-color: #10b981;
+        }
+
+        /* Motor rotation */
+        .motor-on .motor-rotor {
+            animation: motor-spin 1s linear infinite;
+        }
+
+        @keyframes motor-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(20px);
+            padding: 15px 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+            font-size: 0.9em;
+            z-index: 10;
+            border: 2px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 6px 0;
+            align-items: center;
+        }
+
+        .info-label {
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.1);
+            padding: 2px 10px;
+            border-radius: 8px;
+        }
+
+        .toast {
+            position: fixed;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 0.95em;
+            font-weight: 600;
+            z-index: 10000;
+            animation: toast-slide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        @keyframes toast-slide {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                max-height: 50vh;
+                position: absolute;
+                bottom: 0;
+                transform: translateY(100%);
+            }
+
+            .sidebar.visible {
+                transform: translateY(0);
+            }
+
+            .sidebar.hidden {
+                transform: translateY(100%);
+            }
+
+            .header-title {
+                font-size: 1.1em;
+            }
+
+            .btn {
+                padding: 8px 14px;
+                font-size: 0.85em;
+            }
+
+            .component-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .info-panel {
+                font-size: 0.8em;
+                padding: 10px 15px;
+                bottom: 10px;
+                left: 10px;
+            }
+        }
+
+        /* Wire styles */
+        .wire {
+            stroke: #334155;
+            stroke-width: 4;
+            fill: none;
+            cursor: pointer;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .wire.active {
+            stroke: #fbbf24;
+            stroke-width: 5;
+            filter: drop-shadow(0 0 8px #fbbf24);
+            animation: current-flow 1s linear infinite;
+        }
+
+        @keyframes current-flow {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: 30; }
+        }
+
+        .wire-temp {
+            stroke: #8b5cf6;
+            stroke-width: 3;
+            stroke-dasharray: 8 4;
+            fill: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="header-title">
+                <span class="header-icon">⚡</span>
+                <span>Симулятор Цепей</span>
+            </div>
+            <div class="controls">
+                <button class="btn btn-menu" id="menuBtn">☰</button>
+                <button class="btn btn-wire" id="wireBtn">
+                    <span>🔌</span>
+                </button>
+                <button class="btn btn-start" id="startBtn">
+                    <span>▶</span>
+                </button>
+                <button class="btn btn-stop" id="stopBtn">
+                    <span>⏸</span>
+                </button>
+                <button class="btn btn-clear" id="clearBtn">
+                    <span>🗑</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="main-area">
+            <div class="sidebar" id="sidebar">
+                <!-- Power Sources -->
+                <div class="category">
+                    <div class="category-title">⚡ Источники Питания</div>
+                    <div class="component-grid">
+                        <div class="component-item" data-type="battery" data-voltage="1.5">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="battery1" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#4ade80;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <rect x="25" y="25" width="40" height="50" rx="5" fill="url(#battery1)" stroke="#166534" stroke-width="3"/>
+                                    <rect x="65" y="35" width="8" height="15" rx="2" fill="url(#battery1)" stroke="#166534" stroke-width="2"/>
+                                    <line x1="37" y1="40" x2="53" y2="40" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+                                    <line x1="45" y1="32" x2="45" y2="48" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+                                    <line x1="37" y1="58" x2="53" y2="58" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+                                    <text x="45" y="92" text-anchor="middle" font-size="12" font-weight="bold" fill="#166534">1.5V</text>
+                                </svg>
+                            </div>
+                            <div class="component-name">Батарейка</div>
+                            <div class="component-value">1.5V</div>
+                        </div>
+
+                        <div class="component-item" data-type="battery" data-voltage="9">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="battery9" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <rect x="20" y="20" width="50" height="60" rx="6" fill="url(#battery9)" stroke="#1e40af" stroke-width="3"/>
+                                    <rect x="70" y="32" width="8" height="20" rx="2" fill="url(#battery9)" stroke="#1e40af" stroke-width="2"/>
+                                    <circle cx="35" cy="40" r="6" fill="#fff" opacity="0.8"/>
+                                    <circle cx="55" cy="40" r="6" fill="#fff" opacity="0.8"/>
+                                    <rect x="28" y="55" width="34" height="12" rx="3" fill="#fff" opacity="0.3"/>
+                                    <text x="45" y="64" text-anchor="middle" font-size="10" font-weight="bold" fill="#1e40af">9V</text>
+                                </svg>
+                            </div>
+                            <div class="component-name">Батарея</div>
+                            <div class="component-value">9V</div>
+                        </div>
+
+                        <div class="component-item" data-type="battery" data-voltage="12">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="battery12" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#a78bfa;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <rect x="20" y="20" width="50" height="60" rx="6" fill="url(#battery12)" stroke="#6d28d9" stroke-width="3"/>
+                                    <rect x="70" y="32" width="8" height="20" rx="2" fill="url(#battery12)" stroke="#6d28d9" stroke-width="2"/>
+                                    <text x="45" y="55" text-anchor="middle" font-size="16" font-weight="bold" fill="#fff">12V</text>
+                                    <rect x="25" y="28" width="40" height="4" rx="2" fill="#fff" opacity="0.4"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Батарея</div>
+                            <div class="component-value">12V</div>
+                        </div>
+
+                        <div class="component-item" data-type="power" data-voltage="220">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <radialGradient id="powerGrad">
+                                            <stop offset="0%" style="stop-color:#fca5a5;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+                                        </radialGradient>
+                                    </defs>
+                                    <circle cx="50" cy="50" r="38" fill="url(#powerGrad)" stroke="#991b1b" stroke-width="3"/>
+                                    <path d="M 50 20 L 42 45 L 52 43 L 45 75 L 68 42 L 55 44 Z" fill="#fef08a" stroke="#854d0e" stroke-width="2"/>
+                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#fff" stroke-width="2" opacity="0.3"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Розетка</div>
+                            <div class="component-value">220V</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resistors -->
+                <div class="category">
+                    <div class="category-title">📊 Резисторы</div>
+                    <div class="component-grid">
+                        <div class="component-item" data-type="resistor" data-resistance="10">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="15" y="38" width="70" height="24" rx="4" fill="#d4a574" stroke="#8b4513" stroke-width="3"/>
+                                    <rect x="22" y="35" width="6" height="30" fill="#8b4513"/>
+                                    <rect x="40" y="35" width="6" height="30" fill="#000"/>
+                                    <rect x="58" y="35" width="6" height="30" fill="#8b4513"/>
+                                    <line x1="0" y1="50" x2="15" y2="50" stroke="#666" stroke-width="3"/>
+                                    <line x1="85" y1="50" x2="100" y2="50" stroke="#666" stroke-width="3"/>
+                                    <rect x="15" y="36" width="70" height="3" fill="#fff" opacity="0.3"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Резистор</div>
+                            <div class="component-value">10Ω</div>
+                        </div>
+
+                        <div class="component-item" data-type="resistor" data-resistance="100">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="15" y="38" width="70" height="24" rx="4" fill="#d4a574" stroke="#8b4513" stroke-width="3"/>
+                                    <rect x="28" y="35" width="6" height="30" fill="#8b4513"/>
+                                    <rect x="46" y="35" width="6" height="30" fill="#000"/>
+                                    <rect x="64" y="35" width="6" height="30" fill="#8b4513"/>
+                                    <line x1="0" y1="50" x2="15" y2="50" stroke="#666" stroke-width="3"/>
+                                    <line x1="85" y1="50" x2="100" y2="50" stroke="#666" stroke-width="3"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Резистор</div>
+                            <div class="component-value">100Ω</div>
+                        </div>
+
+                        <div class="component-item" data-type="resistor" data-resistance="220">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="15" y="38" width="70" height="24" rx="4" fill="#d4a574" stroke="#8b4513" stroke-width="3"/>
+                                    <rect x="28" y="35" width="6" height="30" fill="#ff0000"/>
+                                    <rect x="46" y="35" width="6" height="30" fill="#ff0000"/>
+                                    <rect x="64" y="35" width="6" height="30" fill="#000"/>
+                                    <line x1="0" y1="50" x2="15" y2="50" stroke="#666" stroke-width="3"/>
+                                    <line x1="85" y1="50" x2="100" y2="50" stroke="#666" stroke-width="3"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Резистор</div>
+                            <div class="component-value">220Ω</div>
+                        </div>
+
+                        <div class="component-item" data-type="resistor" data-resistance="1000">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <rect x="15" y="38" width="70" height="24" rx="4" fill="#d4a574" stroke="#8b4513" stroke-width="3"/>
+                                    <rect x="28" y="35" width="6" height="30" fill="#8b4513"/>
+                                    <rect x="46" y="35" width="6" height="30" fill="#000"/>
+                                    <rect x="64" y="35" width="6" height="30" fill="#ff0000"/>
+                                    <line x1="0" y1="50" x2="15" y2="50" stroke="#666" stroke-width="3"/>
+                                    <line x1="85" y1="50" x2="100" y2="50" stroke="#666" stroke-width="3"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Резистор</div>
+                            <div class="component-value">1kΩ</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Output Devices -->
+                <div class="category">
+                    <div class="category-title">💡 Индикаторы</div>
+                    <div class="component-grid">
+                        <div class="component-item" data-type="bulb" data-resistance="60">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <radialGradient id="bulbGlass">
+                                            <stop offset="0%" style="stop-color:#fffbeb;stop-opacity:0.9" />
+                                            <stop offset="100%" style="stop-color:#fef3c7;stop-opacity:0.6" />
+                                        </radialGradient>
+                                    </defs>
+                                    <!-- Glass bulb -->
+                                    <ellipse cx="50" cy="42" rx="28" ry="32" fill="url(#bulbGlass)" stroke="#92400e" stroke-width="2.5"/>
+                                    <!-- Filament -->
+                                    <path d="M 42 35 Q 50 40 58 35 Q 50 45 42 40 Q 50 50 58 45" stroke="#78350f" stroke-width="2" fill="none"/>
+                                    <!-- Base -->
+                                    <rect x="38" y="68" width="24" height="8" fill="#71717a" stroke="#3f3f46" stroke-width="2"/>
+                                    <rect x="35" y="76" width="30" height="3" fill="#52525b"/>
+                                    <rect x="35" y="79" width="30" height="3" fill="#52525b"/>
+                                    <!-- Socket -->
+                                    <rect x="43" y="82" width="14" height="10" rx="2" fill="#3f3f46" stroke="#18181b" stroke-width="2"/>
+                                    <!-- Shine effect -->
+                                    <ellipse cx="40" cy="32" rx="8" ry="12" fill="#fff" opacity="0.4"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Лампочка</div>
+                            <div class="component-value">60Ω</div>
+                        </div>
+
+                        <div class="component-item" data-type="led" data-resistance="20">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <radialGradient id="ledRed">
+                                            <stop offset="0%" style="stop-color:#fca5a5;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+                                        </radialGradient>
+                                    </defs>
+                                    <!-- LED dome -->
+                                    <ellipse cx="50" cy="38" rx="24" ry="26" fill="url(#ledRed)" stroke="#991b1b" stroke-width="2.5" opacity="0.9"/>
+                                    <!-- Highlight -->
+                                    <ellipse cx="42" cy="28" rx="10" ry="12" fill="#fff" opacity="0.5"/>
+                                    <!-- LED body -->
+                                    <rect x="35" y="64" width="30" height="16" rx="2" fill="#27272a" stroke="#000" stroke-width="2"/>
+                                    <!-- Legs -->
+                                    <rect x="42" y="80" width="3" height="15" fill="#52525b"/>
+                                    <rect x="55" y="80" width="3" height="15" fill="#52525b"/>
+                                    <!-- Light rays -->
+                                    <path d="M 65 25 L 75 15" stroke="#fca5a5" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+                                    <path d="M 70 28 L 82 22" stroke="#fca5a5" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">LED Красный</div>
+                            <div class="component-value">20Ω</div>
+                        </div>
+
+                        <div class="component-item" data-type="led-green" data-resistance="20">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <radialGradient id="ledGreen">
+                                            <stop offset="0%" style="stop-color:#86efac;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1" />
+                                        </radialGradient>
+                                    </defs>
+                                    <ellipse cx="50" cy="38" rx="24" ry="26" fill="url(#ledGreen)" stroke="#166534" stroke-width="2.5" opacity="0.9"/>
+                                    <ellipse cx="42" cy="28" rx="10" ry="12" fill="#fff" opacity="0.5"/>
+                                    <rect x="35" y="64" width="30" height="16" rx="2" fill="#27272a" stroke="#000" stroke-width="2"/>
+                                    <rect x="42" y="80" width="3" height="15" fill="#52525b"/>
+                                    <rect x="55" y="80" width="3" height="15" fill="#52525b"/>
+                                    <path d="M 65 25 L 75 15" stroke="#86efac" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+                                    <path d="M 70 28 L 82 22" stroke="#86efac" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">LED Зеленый</div>
+                            <div class="component-value">20Ω</div>
+                        </div>
+
+                        <div class="component-item" data-type="motor" data-resistance="50">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="motorGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#94a3b8;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#64748b;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <!-- Motor body -->
+                                    <rect x="20" y="25" width="60" height="50" rx="8" fill="url(#motorGrad)" stroke="#1e293b" stroke-width="3"/>
+                                    <!-- Rotor circle -->
+                                    <circle cx="50" cy="50" r="18" fill="#475569" stroke="#1e293b" stroke-width="2.5"/>
+                                    <circle cx="50" cy="50" r="12" fill="#334155" stroke="#1e293b" stroke-width="2"/>
+                                    <!-- Rotor arms -->
+                                    <g class="motor-rotor" transform-origin="50 50">
+                                        <line x1="50" y1="50" x2="68" y2="50" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+                                        <line x1="50" y1="50" x2="50" y2="32" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+                                    </g>
+                                    <!-- Shaft -->
+                                    <rect x="80" y="47" width="15" height="6" rx="1" fill="#52525b" stroke="#1e293b" stroke-width="2"/>
+                                    <!-- Terminals -->
+                                    <circle cx="28" cy="35" r="3" fill="#ef4444"/>
+                                    <circle cx="28" cy="65" r="3" fill="#3b82f6"/>
+                                    <!-- Label -->
+                                    <text x="50" y="90" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e293b">M</text>
+                                </svg>
+                            </div>
+                            <div class="component-name">Моторчик</div>
+                            <div class="component-value">50Ω</div>
+                        </div>
+
+                        <div class="component-item" data-type="buzzer" data-resistance="30">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <radialGradient id="buzzerGrad">
+                                            <stop offset="0%" style="stop-color:#374151;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#1f2937;stop-opacity:1" />
+                                        </radialGradient>
+                                    </defs>
+                                    <circle cx="50" cy="50" r="32" fill="url(#buzzerGrad)" stroke="#000" stroke-width="3"/>
+                                    <circle cx="50" cy="50" r="24" fill="#27272a" stroke="#000" stroke-width="2"/>
+                                    <circle cx="50" cy="50" r="16" fill="#3f3f46"/>
+                                    <circle cx="50" cy="50" r="8" fill="#52525b"/>
+                                    <!-- Sound waves -->
+                                    <path d="M 78 35 Q 88 35 88 50 Q 88 65 78 65" stroke="#ef4444" stroke-width="2.5" fill="none" opacity="0.7"/>
+                                    <path d="M 72 40 Q 80 40 80 50 Q 80 60 72 60" stroke="#ef4444" stroke-width="2.5" fill="none" opacity="0.7"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Зуммер</div>
+                            <div class="component-value">30Ω</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Switches -->
+                <div class="category">
+                    <div class="category-title">🔘 Переключатели</div>
+                    <div class="component-grid">
+                        <div class="component-item" data-type="switch">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="switchTrack" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" style="stop-color:#e5e7eb;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#d1d5db;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <!-- Track -->
+                                    <rect x="18" y="38" width="64" height="24" rx="12" fill="url(#switchTrack)" stroke="#6b7280" stroke-width="3"/>
+                                    <!-- Toggle -->
+                                    <circle cx="32" cy="50" r="15" fill="#ef4444" stroke="#991b1b" stroke-width="3"/>
+                                    <circle cx="32" cy="50" r="15" fill="url(#switchTrack)" opacity="0.3"/>
+                                    <!-- Wires -->
+                                    <line x1="0" y1="50" x2="18" y2="50" stroke="#666" stroke-width="3"/>
+                                    <line x1="82" y1="50" x2="100" y2="50" stroke="#666" stroke-width="3"/>
+                                    <!-- OFF label -->
+                                    <text x="62" y="54" text-anchor="middle" font-size="10" font-weight="bold" fill="#6b7280">OFF</text>
+                                </svg>
+                            </div>
+                            <div class="component-name">Выключатель</div>
+                        </div>
+
+                        <div class="component-item" data-type="button">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <linearGradient id="buttonGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#fca5a5;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+                                        </linearGradient>
+                                    </defs>
+                                    <!-- Base -->
+                                    <rect x="20" y="52" width="60" height="10" rx="2" fill="#71717a" stroke="#3f3f46" stroke-width="2"/>
+                                    <!-- Button -->
+                                    <rect x="30" y="28" width="40" height="30" rx="6" fill="url(#buttonGrad)" stroke="#991b1b" stroke-width="3"/>
+                                    <rect x="30" y="28" width="40" height="8" rx="6" fill="#fff" opacity="0.3"/>
+                                    <!-- Wires -->
+                                    <line x1="0" y1="57" x2="20" y2="57" stroke="#666" stroke-width="3"/>
+                                    <line x1="80" y1="57" x2="100" y2="57" stroke="#666" stroke-width="3"/>
+                                    <!-- Spring lines -->
+                                    <line x1="35" y1="58" x2="35" y2="50" stroke="#52525b" stroke-width="2"/>
+                                    <line x1="65" y1="58" x2="65" y2="50" stroke="#52525b" stroke-width="2"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Кнопка</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meters -->
+                <div class="category">
+                    <div class="category-title">📏 Измерители</div>
+                    <div class="component-grid">
+                        <div class="component-item" data-type="ammeter">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <radialGradient id="meterFace">
+                                            <stop offset="0%" style="stop-color:#fff;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#f3f4f6;stop-opacity:1" />
+                                        </radialGradient>
+                                    </defs>
+                                    <circle cx="50" cy="50" r="38" fill="url(#meterFace)" stroke="#1f2937" stroke-width="4"/>
+                                    <!-- Scale marks -->
+                                    <path d="M 50 50 L 25 30" stroke="#d1d5db" stroke-width="1.5"/>
+                                    <path d="M 50 50 L 75 30" stroke="#d1d5db" stroke-width="1.5"/>
+                                    <path d="M 50 50 L 50 15" stroke="#d1d5db" stroke-width="1.5"/>
+                                    <!-- Scale arc -->
+                                    <path d="M 20 35 A 35 35 0 0 1 80 35" stroke="#9ca3af" stroke-width="2" fill="none"/>
+                                    <!-- Needle -->
+                                    <line x1="50" y1="50" x2="68" y2="30" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+                                    <circle cx="50" cy="50" r="5" fill="#1f2937"/>
+                                    <!-- Label -->
+                                    <text x="50" y="72" text-anchor="middle" font-size="24" font-weight="bold" fill="#1f2937">A</text>
+                                    <!-- Glass effect -->
+                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#fff" stroke-width="2" opacity="0.3"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Амперметр</div>
+                        </div>
+
+                        <div class="component-item" data-type="voltmeter">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="50" cy="50" r="38" fill="url(#meterFace)" stroke="#1f2937" stroke-width="4"/>
+                                    <path d="M 50 50 L 25 30" stroke="#d1d5db" stroke-width="1.5"/>
+                                    <path d="M 50 50 L 75 30" stroke="#d1d5db" stroke-width="1.5"/>
+                                    <path d="M 50 50 L 50 15" stroke="#d1d5db" stroke-width="1.5"/>
+                                    <path d="M 20 35 A 35 35 0 0 1 80 35" stroke="#9ca3af" stroke-width="2" fill="none"/>
+                                    <line x1="50" y1="50" x2="68" y2="30" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+                                    <circle cx="50" cy="50" r="5" fill="#1f2937"/>
+                                    <text x="50" y="72" text-anchor="middle" font-size="24" font-weight="bold" fill="#1f2937">V</text>
+                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#fff" stroke-width="2" opacity="0.3"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Вольтметр</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Capacitors & Diodes -->
+                <div class="category">
+                    <div class="category-title">⚙️ Дополнительно</div>
+                    <div class="component-grid">
+                        <div class="component-item" data-type="capacitor" data-capacitance="100">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <line x1="0" y1="50" x2="42" y2="50" stroke="#666" stroke-width="3"/>
+                                    <line x1="58" y1="50" x2="100" y2="50" stroke="#666" stroke-width="3"/>
+                                    <!-- Plates -->
+                                    <line x1="45" y1="20" x2="45" y2="80" stroke="#1f2937" stroke-width="7" stroke-linecap="round"/>
+                                    <line x1="55" y1="20" x2="55" y2="80" stroke="#1f2937" stroke-width="7" stroke-linecap="round"/>
+                                    <!-- Highlight -->
+                                    <line x1="45" y1="25" x2="45" y2="45" stroke="#94a3b8" stroke-width="3" opacity="0.5"/>
+                                    <line x1="55" y1="25" x2="55" y2="45" stroke="#94a3b8" stroke-width="3" opacity="0.5"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Конденсатор</div>
+                            <div class="component-value">100µF</div>
+                        </div>
+
+                        <div class="component-item" data-type="diode">
+                            <div class="component-icon-wrapper">
+                                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                                    <line x1="0" y1="50" x2="100" y2="50" stroke="#666" stroke-width="3"/>
+                                    <!-- Triangle -->
+                                    <polygon points="35,25 35,75 68,50" fill="#1f2937" stroke="#000" stroke-width="2"/>
+                                    <!-- Bar -->
+                                    <line x1="68" y1="25" x2="68" y2="75" stroke="#1f2937" stroke-width="6" stroke-linecap="round"/>
+                                    <!-- Highlight -->
+                                    <polygon points="38,30 38,50 55,40" fill="#94a3b8" opacity="0.4"/>
+                                </svg>
+                            </div>
+                            <div class="component-name">Диод</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workspace" id="workspace">
+                <svg class="workspace-canvas" id="wireSvg"></svg>
+                <div class="info-panel">
+                    <div class="info-row">
+                        <span class="info-label">Компоненты:</span>
+                        <span class="info-value" id="compCount">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Провода:</span>
+                        <span class="info-value" id="wireCount">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Статус:</span>
+                        <span class="info-value" id="simStatus">⏸ Стоп</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class CircuitSimulator {
+            constructor() {
+                this.components = [];
+                this.wires = [];
+                this.workspace = document.getElementById('workspace');
+                this.svg = document.getElementById('wireSvg');
+                this.sidebar = document.getElementById('sidebar');
+                
+                this.isSimulating = false;
+                this.wireMode = false;
+                this.selectedTerminal = null;
+                this.tempWirePath = null;
+                
+                this.componentId = 0;
+                this.wireId = 0;
+                
+                this.draggedElement = null;
+                this.dragOffset = { x: 0, y: 0 };
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.setupComponentLibrary();
+                this.updateInfo();
+                this.showToast('🔌 Перетащите компоненты для создания цепи!');
+            }
+
+            setupEventListeners() {
+                // Controls
+                document.getElementById('startBtn').addEventListener('click', () => this.startSimulation());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stopSimulation());
+                document.getElementById('clearBtn').addEventListener('click', () => this.clearAll());
+                document.getElementById('menuBtn').addEventListener('click', () => this.toggleSidebar());
+                document.getElementById('wireBtn').addEventListener('click', () => this.toggleWireMode());
+
+                // Wire drawing
+                this.workspace.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.workspace.addEventListener('mouseup', () => this.handleMouseUp());
+
+                // Touch support
+                this.workspace.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+                this.workspace.addEventListener('touchend', () => this.handleTouchEnd());
+            }
+
+            setupComponentLibrary() {
+                const items = document.querySelectorAll('.component-item');
+                items.forEach(item => {
+                    // Mouse drag
+                    item.addEventListener('mousedown', (e) => this.startDragFromLibrary(e, item));
+                    
+                    // Touch drag
+                    item.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.startDragFromLibrary(e.touches[0], item);
+                    }, { passive: false });
+                });
+            }
+
+            startDragFromLibrary(event, item) {
+                const rect = this.workspace.getBoundingClientRect();
+                const x = (event.clientX || event.pageX) - rect.left;
+                const y = (event.clientY || event.pageY) - rect.top;
+
+                this.addComponent(
+                    item.dataset.type,
+                    x,
+                    y,
+                    {
+                        voltage: parseFloat(item.dataset.voltage) || 0,
+                        resistance: parseFloat(item.dataset.resistance) || 0,
+                        capacitance: parseFloat(item.dataset.capacitance) || 0
+                    }
+                );
+            }
+
+            addComponent(type, x, y, params = {}) {
+                const comp = {
+                    id: this.componentId++,
+                    type: type,
+                    x: Math.max(0, x - 50),
+                    y: Math.max(0, y - 50),
+                    voltage: params.voltage || 0,
+                    resistance: params.resistance || 0,
+                    capacitance: params.capacitance || 0,
+                    current: 0,
+                    power: 0,
+                    isOn: type !== 'switch' && type !== 'button',
+                    connections: []
+                };
+
+                this.components.push(comp);
+                this.createComponentElement(comp);
+                this.updateInfo();
+            }
+
+            createComponentElement(comp) {
+                const div = document.createElement('div');
+                div.className = 'component';
+                div.id = `comp-${comp.id}`;
+                div.style.left = comp.x + 'px';
+                div.style.top = comp.y + 'px';
+
+                const specs = this.getComponentSpecs(comp);
+                
+                div.innerHTML = `
+                    <div class="component-body">
+                        <div class="component-body-inner">
+                            <div class="component-svg">${specs.svg}</div>
+                            <div class="component-label">${specs.label}</div>
+                            ${specs.value ? `<div class="component-info">${specs.value}</div>` : ''}
+                            <div class="component-current" id="current-${comp.id}"></div>
+                        </div>
+                        <div class="terminal negative" data-id="${comp.id}" data-type="neg"></div>
+                        <div class="terminal positive" data-id="${comp.id}" data-type="pos"></div>
+                    </div>
+                    <div class="delete-btn">×</div>
+                `;
+
+                // Setup component drag
+                this.setupComponentDrag(div, comp);
+
+                // Terminal clicks
+                div.querySelectorAll('.terminal').forEach(terminal => {
+                    terminal.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.handleTerminalClick(comp.id, terminal.dataset.type);
+                    });
+                });
+
+                // Delete button
+                div.querySelector('.delete-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.deleteComponent(comp.id);
+                });
+
+                // Toggle switch/button
+                if (comp.type === 'switch' || comp.type === 'button') {
+                    const body = div.querySelector('.component-body');
+                    body.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('terminal')) {
+                            comp.isOn = !comp.isOn;
+                            div.classList.toggle('switch-on', comp.isOn);
+                            if (this.isSimulating) this.calculateCircuit();
+                        }
+                    });
+                }
+
+                this.workspace.appendChild(div);
+            }
+
+            setupComponentDrag(div, comp) {
+                const body = div.querySelector('.component-body');
+                let isDragging = false;
+
+                const startDrag = (clientX, clientY) => {
+                    const rect = div.getBoundingClientRect();
+                    this.dragOffset.x = clientX - rect.left;
+                    this.dragOffset.y = clientY - rect.top;
+                    isDragging = true;
+                    div.classList.add('dragging');
+                };
+
+                const drag = (clientX, clientY) => {
+                    if (!isDragging) return;
+                    const rect = this.workspace.getBoundingClientRect();
+                    comp.x = Math.max(0, Math.min(rect.width - 100, clientX - rect.left - this.dragOffset.x));
+                    comp.y = Math.max(0, Math.min(rect.height - 100, clientY - rect.top - this.dragOffset.y));
+                    div.style.left = comp.x + 'px';
+                    div.style.top = comp.y + 'px';
+                    this.drawWires();
+                };
+
+                const endDrag = () => {
+                    isDragging = false;
+                    div.classList.remove('dragging');
+                };
+
+                // Mouse events
+                body.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('terminal')) return;
+                    e.preventDefault();
+                    startDrag(e.clientX, e.clientY);
+                });
+
+                document.addEventListener('mousemove', (e) => drag(e.clientX, e.clientY));
+                document.addEventListener('mouseup', endDrag);
+
+                // Touch events
+                body.addEventListener('touchstart', (e) => {
+                    if (e.target.classList.contains('terminal')) return;
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    startDrag(touch.clientX, touch.clientY);
+                }, { passive: false });
+
+                document.addEventListener('touchmove', (e) => {
+                    if (!isDragging) return;
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    drag(touch.clientX, touch.clientY);
+                }, { passive: false });
+
+                document.addEventListener('touchend', endDrag);
+            }
+
+            getComponentSpecs(comp) {
+                const svgMap = {
+                    'battery': this.getBatterySVG(comp),
+                    'power': this.getPowerSVG(),
+                    'resistor': this.getResistorSVG(comp),
+                    'bulb': this.getBulbSVG(),
+                    'led': this.getLEDSVG('red'),
+                    'led-green': this.getLEDSVG('green'),
+                    'motor': this.getMotorSVG(),
+                    'buzzer': this.getBuzzerSVG(),
+                    'switch': this.getSwitchSVG(),
+                    'button': this.getButtonSVG(),
+                    'ammeter': this.getAmmeterSVG(),
+                    'voltmeter': this.getVoltmeterSVG(),
+                    'capacitor': this.getCapacitorSVG(),
+                    'diode': this.getDiodeSVG()
+                };
+
+                let label = '', value = '';
+                
+                switch(comp.type) {
+                    case 'battery':
+                    case 'power':
+                        label = comp.voltage + 'V';
+                        value = 'Источник';
+                        break;
+                    case 'resistor':
+                        label = comp.resistance >= 1000 ? (comp.resistance/1000) + 'kΩ' : comp.resistance + 'Ω';
+                        value = 'Резистор';
+                        break;
+                    case 'bulb':
+                        label = 'Лампа';
+                        value = comp.resistance + 'Ω';
+                        break;
+                    case 'led':
+                    case 'led-green':
+                        label = 'LED';
+                        value = comp.resistance + 'Ω';
+                        break;
+                    case 'motor':
+                        label = 'Мотор';
+                        value = comp.resistance + 'Ω';
+                        break;
+                    case 'buzzer':
+                        label = 'Зуммер';
+                        value = comp.resistance + 'Ω';
+                        break;
+                    case 'switch':
+                        label = 'Выкл';
+                        break;
+                    case 'button':
+                        label = 'Кнопка';
+                        break;
+                    case 'ammeter':
+                        label = 'Амперметр';
+                        break;
+                    case 'voltmeter':
+                        label = 'Вольтметр';
+                        break;
+                    case 'capacitor':
+                        label = 'Конд.';
+                        value = comp.capacitance + 'µF';
+                        break;
+                    case 'diode':
+                        label = 'Диод';
+                        break;
+                }
+
+                return { svg: svgMap[comp.type] || '', label, value };
+            }
+
+            getBatterySVG(comp) {
+                const color = comp.voltage <= 1.5 ? '#22c55e' : comp.voltage <= 9 ? '#3b82f6' : '#8b5cf6';
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="25" y="25" width="40" height="50" rx="5" fill="${color}" stroke="${color}" stroke-width="3" opacity="0.9"/>
+                    <rect x="65" y="35" width="8" height="15" rx="2" fill="${color}" stroke="${color}" stroke-width="2"/>
+                    <line x1="37" y1="40" x2="53" y2="40" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+                    <line x1="45" y1="32" x2="45" y2="48" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+                    <line x1="37" y1="58" x2="53" y2="58" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+                </svg>`;
+            }
+
+            getPowerSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="38" fill="#ef4444" stroke="#991b1b" stroke-width="3"/>
+                    <path d="M 50 20 L 42 45 L 52 43 L 45 75 L 68 42 L 55 44 Z" fill="#fef08a" stroke="#854d0e" stroke-width="2"/>
+                </svg>`;
+            }
+
+            getResistorSVG(comp) {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="15" y="38" width="70" height="24" rx="4" fill="#d4a574" stroke="#8b4513" stroke-width="3"/>
+                    <rect x="28" y="35" width="6" height="30" fill="#8b4513"/>
+                    <rect x="46" y="35" width="6" height="30" fill="#000"/>
+                    <rect x="64" y="35" width="6" height="30" fill="#ff0000"/>
+                </svg>`;
+            }
+
+            getBulbSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="50" cy="42" rx="28" ry="32" fill="#fef3c7" stroke="#92400e" stroke-width="2.5" opacity="0.8"/>
+                    <path d="M 42 35 Q 50 40 58 35 Q 50 45 42 40 Q 50 50 58 45" stroke="#78350f" stroke-width="2" fill="none"/>
+                    <rect x="38" y="68" width="24" height="8" fill="#71717a" stroke="#3f3f46" stroke-width="2"/>
+                    <rect x="43" y="76" width="14" height="10" rx="2" fill="#3f3f46" stroke="#18181b" stroke-width="2"/>
+                    <ellipse cx="40" cy="32" rx="8" ry="12" fill="#fff" opacity="0.4"/>
+                </svg>`;
+            }
+
+            getLEDSVG(color) {
+                const fill = color === 'red' ? '#ef4444' : '#22c55e';
+                const stroke = color === 'red' ? '#991b1b' : '#166534';
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="50" cy="38" rx="24" ry="26" fill="${fill}" stroke="${stroke}" stroke-width="2.5" opacity="0.9"/>
+                    <ellipse cx="42" cy="28" rx="10" ry="12" fill="#fff" opacity="0.5"/>
+                    <rect x="35" y="64" width="30" height="16" rx="2" fill="#27272a" stroke="#000" stroke-width="2"/>
+                    <rect x="42" y="80" width="3" height="12" fill="#52525b"/>
+                    <rect x="55" y="80" width="3" height="12" fill="#52525b"/>
+                </svg>`;
+            }
+
+            getMotorSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="20" y="25" width="60" height="50" rx="8" fill="#64748b" stroke="#1e293b" stroke-width="3"/>
+                    <circle cx="50" cy="50" r="18" fill="#475569" stroke="#1e293b" stroke-width="2.5"/>
+                    <circle cx="50" cy="50" r="12" fill="#334155" stroke="#1e293b" stroke-width="2"/>
+                    <g class="motor-rotor" transform-origin="50 50">
+                        <line x1="50" y1="50" x2="68" y2="50" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+                        <line x1="50" y1="50" x2="50" y2="32" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+                    </g>
+                </svg>`;
+            }
+
+            getBuzzerSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="32" fill="#1f2937" stroke="#000" stroke-width="3"/>
+                    <circle cx="50" cy="50" r="24" fill="#27272a"/>
+                    <circle cx="50" cy="50" r="16" fill="#3f3f46"/>
+                </svg>`;
+            }
+
+            getSwitchSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="18" y="38" width="64" height="24" rx="12" fill="#e5e7eb" stroke="#6b7280" stroke-width="3"/>
+                    <circle cx="32" cy="50" r="15" fill="#ef4444" stroke="#991b1b" stroke-width="3"/>
+                </svg>`;
+            }
+
+            getButtonSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="20" y="52" width="60" height="10" rx="2" fill="#71717a" stroke="#3f3f46" stroke-width="2"/>
+                    <rect x="30" y="28" width="40" height="30" rx="6" fill="#ef4444" stroke="#991b1b" stroke-width="3"/>
+                </svg>`;
+            }
+
+            getAmmeterSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="38" fill="#fff" stroke="#1f2937" stroke-width="4"/>
+                    <line x1="50" y1="50" x2="68" y2="30" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+                    <circle cx="50" cy="50" r="5" fill="#1f2937"/>
+                    <text x="50" y="72" text-anchor="middle" font-size="24" font-weight="bold" fill="#1f2937">A</text>
+                </svg>`;
+            }
+
+            getVoltmeterSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="38" fill="#fff" stroke="#1f2937" stroke-width="4"/>
+                    <line x1="50" y1="50" x2="68" y2="30" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+                    <circle cx="50" cy="50" r="5" fill="#1f2937"/>
+                    <text x="50" y="72" text-anchor="middle" font-size="24" font-weight="bold" fill="#1f2937">V</text>
+                </svg>`;
+            }
+
+            getCapacitorSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="45" y1="20" x2="45" y2="80" stroke="#1f2937" stroke-width="7" stroke-linecap="round"/>
+                    <line x1="55" y1="20" x2="55" y2="80" stroke="#1f2937" stroke-width="7" stroke-linecap="round"/>
+                </svg>`;
+            }
+
+            getDiodeSVG() {
+                return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="35,25 35,75 68,50" fill="#1f2937"/>
+                    <line x1="68" y1="25" x2="68" y2="75" stroke="#1f2937" stroke-width="6" stroke-linecap="round"/>
+                </svg>`;
+            }
+
+            handleTerminalClick(compId, termType) {
+                if (!this.wireMode) {
+                    this.showToast('⚠️ Включите режим проводов!');
+                    return;
+                }
+
+                if (!this.selectedTerminal) {
+                    this.selectedTerminal = { compId, termType };
+                    this.highlightTerminal(compId, termType, true);
+                    this.showToast('✓ Кликните на другую клемму');
+                } else {
+                    if (this.selectedTerminal.compId !== compId) {
+                        this.addWire(
+                            this.selectedTerminal.compId,
+                            this.selectedTerminal.termType,
+                            compId,
+                            termType
+                        );
+                        this.showToast('✓ Провод подключен!');
+                    }
+                    this.highlightTerminal(this.selectedTerminal.compId, this.selectedTerminal.termType, false);
+                    this.selectedTerminal = null;
+                }
+            }
+
+            highlightTerminal(compId, termType, highlight) {
+                const elem = document.getElementById(`comp-${compId}`);
+                if (!elem) return;
+                const terminal = elem.querySelector(`.terminal[data-type="${termType}"]`);
+                if (terminal) {
+                    terminal.classList.toggle('connecting', highlight);
+                }
+            }
+
+            addWire(comp1Id, term1Type, comp2Id, term2Type) {
+                const wire = {
+                    id: this.wireId++,
+                    comp1: comp1Id,
+                    term1: term1Type,
+                    comp2: comp2Id,
+                    term2: term2Type,
+                    current: 0
+                };
+
+                this.wires.push(wire);
+
+                const c1 = this.components.find(c => c.id === comp1Id);
+                const c2 = this.components.find(c => c.id === comp2Id);
+                
+                if (c1) c1.connections.push(comp2Id);
+                if (c2) c2.connections.push(comp1Id);
+
+                this.drawWires();
+                this.updateInfo();
+            }
+
+            drawWires() {
+                while (this.svg.firstChild) {
+                    this.svg.removeChild(this.svg.firstChild);
+                }
+
+                this.wires.forEach(wire => {
+                    const elem1 = document.getElementById(`comp-${wire.comp1}`);
+                    const elem2 = document.getElementById(`comp-${wire.comp2}`);
+                    
+                    if (!elem1 || !elem2) return;
+
+                    const term1 = elem1.querySelector(`.terminal[data-type="${wire.term1}"]`);
+                    const term2 = elem2.querySelector(`.terminal[data-type="${wire.term2}"]`);
+
+                    if (!term1 || !term2) return;
+
+                    const rect1 = term1.getBoundingClientRect();
+                    const rect2 = term2.getBoundingClientRect();
+                    const svgRect = this.svg.getBoundingClientRect();
+
+                    const x1 = rect1.left + rect1.width/2 - svgRect.left;
+                    const y1 = rect1.top + rect1.height/2 - svgRect.top;
+                    const x2 = rect2.left + rect2.width/2 - svgRect.left;
+                    const y2 = rect2.top + rect2.height/2 - svgRect.top;
+
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2;
+                    const offset = 30;
+                    
+                    const d = `M ${x1} ${y1} Q ${midX} ${midY - offset} ${x2} ${y2}`;
+                    path.setAttribute('d', d);
+                    path.classList.add('wire');
+                    
+                    if (wire.current > 0) {
+                        path.classList.add('active');
+                        path.setAttribute('stroke-dasharray', '15 15');
+                    }
+                    
+                    path.addEventListener('click', () => this.deleteWire(wire.id));
+                    
+                    this.svg.appendChild(path);
+                });
+            }
+
+            deleteComponent(id) {
+                this.wires = this.wires.filter(w => w.comp1 !== id && w.comp2 !== id);
+                this.components = this.components.filter(c => c.id !== id);
+                
+                const elem = document.getElementById(`comp-${id}`);
+                if (elem) elem.remove();
+
+                this.drawWires();
+                this.updateInfo();
+                this.showToast('🗑 Компонент удален');
+            }
+
+            deleteWire(id) {
+                const wire = this.wires.find(w => w.id === id);
+                if (wire) {
+                    const c1 = this.components.find(c => c.id === wire.comp1);
+                    const c2 = this.components.find(c => c.id === wire.comp2);
+                    
+                    if (c1) c1.connections = c1.connections.filter(cid => cid !== wire.comp2);
+                    if (c2) c2.connections = c2.connections.filter(cid => cid !== wire.comp1);
+                }
+
+                this.wires = this.wires.filter(w => w.id !== id);
+                this.drawWires();
+                this.updateInfo();
+                this.showToast('🔌 Провод удален');
+            }
+
+            startSimulation() {
+                this.isSimulating = true;
+                document.getElementById('simStatus').textContent = '⚡ Работает';
+                this.showToast('▶ Симуляция запущена!');
+                
+                this.simulationInterval = setInterval(() => {
+                    this.calculateCircuit();
+                }, 100);
+            }
+
+            stopSimulation() {
+                this.isSimulating = false;
+                clearInterval(this.simulationInterval);
+                document.getElementById('simStatus').textContent = '⏸ Стоп';
+                
+                this.components.forEach(c => c.current = 0);
+                this.wires.forEach(w => w.current = 0);
+                
+                document.querySelectorAll('.bulb-on, .led-on, .motor-on').forEach(el => {
+                    el.classList.remove('bulb-on', 'led-on', 'motor-on', 'red', 'green');
+                });
+                
+                this.drawWires();
+                this.updateComponentDisplays();
+                this.showToast('⏸ Симуляция остановлена');
+            }
+
+            calculateCircuit() {
+                const batteries = this.components.filter(c => 
+                    (c.type === 'battery' || c.type === 'power') && c.voltage > 0
+                );
+
+                this.components.forEach(c => c.current = 0);
+                this.wires.forEach(w => w.current = 0);
+
+                batteries.forEach(battery => {
+                    const circuit = this.traceCircuit(battery.id);
+                    
+                    if (circuit.length > 1) {
+                        let totalResistance = 0;
+                        let circuitBroken = false;
+
+                        circuit.forEach(compId => {
+                            const comp = this.components.find(c => c.id === compId);
+                            if (!comp) return;
+                            
+                            if ((comp.type === 'switch' || comp.type === 'button') && !comp.isOn) {
+                                circuitBroken = true;
+                            }
+                            
+                            totalResistance += comp.resistance || 0;
+                        });
+
+                        if (!circuitBroken && totalResistance > 0) {
+                            const current = battery.voltage / totalResistance;
+
+                            circuit.forEach(compId => {
+                                const comp = this.components.find(c => c.id === compId);
+                                if (comp) {
+                                    comp.current = current;
+                                    comp.power = current * current * (comp.resistance || 0);
+                                }
+                            });
+
+                            this.wires.forEach(wire => {
+                                if (circuit.includes(wire.comp1) && circuit.includes(wire.comp2)) {
+                                    wire.current = current;
+                                }
+                            });
+                        }
+                    }
+                });
+
+                this.updateComponentDisplays();
+                this.drawWires();
+            }
+
+            traceCircuit(startId, visited = new Set()) {
+                if (visited.has(startId)) return [];
+                visited.add(startId);
+
+                const component = this.components.find(c => c.id === startId);
+                if (!component) return [];
+
+                const circuit = [startId];
+
+                component.connections.forEach(connId => {
+                    if (!visited.has(connId)) {
+                        circuit.push(...this.traceCircuit(connId, visited));
+                    }
+                });
+
+                return circuit;
+            }
+
+            updateComponentDisplays() {
+                this.components.forEach(comp => {
+                    const elem = document.getElementById(`comp-${comp.id}`);
+                    if (!elem) return;
+
+                    const currentDisplay = document.getElementById(`current-${comp.id}`);
+                    if (currentDisplay && comp.current > 0) {
+                        currentDisplay.textContent = `${comp.current.toFixed(2)}A`;
+                    } else if (currentDisplay) {
+                        currentDisplay.textContent = '';
+                    }
+
+                    // Bulb glow effect
+                    if (comp.type === 'bulb') {
+                        if (comp.current > 0.05) {
+                            elem.classList.add('bulb-on');
+                        } else {
+                            elem.classList.remove('bulb-on');
+                        }
+                    }
+
+                    // LED glow effect
+                    if (comp.type === 'led' || comp.type === 'led-green') {
+                        if (comp.current > 0.01) {
+                            elem.classList.add('led-on');
+                            elem.classList.add(comp.type === 'led' ? 'red' : 'green');
+                        } else {
+                            elem.classList.remove('led-on', 'red', 'green');
+                        }
+                    }
+
+                    // Motor rotation
+                    if (comp.type === 'motor') {
+                        if (comp.current > 0.01) {
+                            elem.classList.add('motor-on');
+                        } else {
+                            elem.classList.remove('motor-on');
+                        }
+                    }
+                });
+            }
+
+            toggleWireMode() {
+                this.wireMode = !this.wireMode;
+                const btn = document.getElementById('wireBtn');
+                btn.classList.toggle('active', this.wireMode);
+                
+                if (this.wireMode) {
+                    this.showToast('🔌 Режим проводов ВКЛЮЧЕН');
+                } else {
+                    this.showToast('🔌 Режим проводов ВЫКЛЮЧЕН');
+                    if (this.selectedTerminal) {
+                        this.highlightTerminal(this.selectedTerminal.compId, this.selectedTerminal.termType, false);
+                        this.selectedTerminal = null;
+                    }
+                }
+            }
+
+            toggleSidebar() {
+                this.sidebar.classList.toggle('visible');
+                this.sidebar.classList.toggle('hidden');
+            }
+
+            clearAll() {
+                if (confirm('Удалить все компоненты и провода?')) {
+                    this.stopSimulation();
+                    this.components = [];
+                    this.wires = [];
+                    this.workspace.querySelectorAll('.component').forEach(el => el.remove());
+                    this.drawWires();
+                    this.updateInfo();
+                    this.showToast('🗑 Все очищено!');
+                }
+            }
+
+            updateInfo() {
+                document.getElementById('compCount').textContent = this.components.length;
+                document.getElementById('wireCount').textContent = this.wires.length;
+            }
+
+            handleMouseMove(e) {}
+            handleMouseUp() {}
+            handleTouchMove(e) {}
+            handleTouchEnd() {}
+
+            showToast(message) {
+                const existing = document.querySelector('.toast');
+                if (existing) existing.remove();
+
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.textContent = message;
+                document.body.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        }
+
+        // Initialize
+        const simulator = new CircuitSimulator();
+    </script>
+</body>
+</html>
